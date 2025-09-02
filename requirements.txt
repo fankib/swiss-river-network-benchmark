@@ -1,0 +1,11 @@
+pandas
+matplotlib
+tensorboard
+scikit-image
+odfpy
+notebook
+torch_geometric
+seaborn
+ray
+"ray[tune]"
+scikit-learn

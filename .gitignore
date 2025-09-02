@@ -1,0 +1,6 @@
+__pycache__/
+
+# files:
+*.csv
+*.png
+*.pgf
