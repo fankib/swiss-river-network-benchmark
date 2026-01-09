@@ -84,7 +84,7 @@ def dump_predictions(graph_name, station, suffix, epoch_days, prediction):
         f'{station}_wt_hat': prediction
     })
 
-    df.to_csv(f'swissrivernetwork/journal/dump/prediction/{graph_name}_lstm_{station}_{suffix}.csv', index=False)
+    df.to_csv(f'swissrivernetwork/benchmark/dump/prediction/{graph_name}_lstm_{station}_{suffix}.csv', index=False)
 
 def fit_normalizers(df):
     normalizer_at = MinMaxScaler().fit(df['air_temperature'].values.reshape(-1, 1))
@@ -106,7 +106,7 @@ def plot(graph_name, method, station, epoch_days, actual, prediction, title):
     plt.plot(epoch_days, prediction, label='Prediction')
     plt.legend()
     plt.title(title.replace('\t', ' '))
-    plt.savefig(f'swissrivernetwork/journal/dump/figures/{graph_name}_{method}_{station}.png', dpi=300)
+    plt.savefig(f'swissrivernetwork/benchmark/dump/figures/{graph_name}_{method}_{station}.png', dpi=300)
     SHOW_PLOT and plt.show()
 
 def test_graphlet(graph_name, station, model):

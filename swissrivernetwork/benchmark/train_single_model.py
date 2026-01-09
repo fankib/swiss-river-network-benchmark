@@ -95,5 +95,5 @@ if __name__ == '__main__':
         'num_heads': 0
     }
         
-    #train_lstm_embedding(config)
-    train_stgnn(config)
+    train_lstm_embedding(config)
+    #train_stgnn(config)

@@ -7,5 +7,5 @@ notebook
 torch_geometric
 seaborn
 ray
-"ray[tune]"
 scikit-learn
+"ray[tune]"

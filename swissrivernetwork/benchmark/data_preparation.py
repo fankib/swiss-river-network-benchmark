@@ -58,7 +58,7 @@ def print_start_end(df):
 def graph_export(x, e, dump_dir, graph_name, train_test_split, filter_values):
     
     # persist graph:
-    torch.save((x,e), f'swissrivernetwork/journal/dump/graph_{graph_name}.pth') 
+    torch.save((x,e), f'swissrivernetwork/benchmark/dump/graph_{graph_name}.pth') 
 
     #Plot Rhine Figure:
     plot_graph(x,e)    
@@ -185,7 +185,7 @@ def create_1990_graph():
     
     x2, e2 = rhone_reader.read()
     x, e = combine_graphs(x1, e1, x2, e2)
-    graph_export(x, e, 'swissrivernetwork/journal/dump/', 'swiss-1990', split, filter_1990)    
+    graph_export(x, e, 'swissrivernetwork/benchmark/dump/', 'swiss-1990', split, filter_1990)    
 
 def filter_2010(total):
     start_date = to_unix_days(from_human(1, 1, 2005))
@@ -243,7 +243,7 @@ def create_2010_graph():
     # Export:
     split = to_unix_days(from_human(1, 1, 2018))
     print('first day of test set:', split)
-    graph_export(x, e, 'swissrivernetwork/journal/dump/', 'swiss-2010', split, filter_2010)
+    graph_export(x, e, 'swissrivernetwork/benchmark/dump/', 'swiss-2010', split, filter_2010)
 
 def read_zh_water_temperature(station):
     # Find File
@@ -309,7 +309,7 @@ def create_zh_graph():
 
     # plot graph:
     graph_name = 'zurich'
-    dump_dir = 'swissrivernetwork/journal/dump/'
+    dump_dir = 'swissrivernetwork/benchmark/dump/'
     #plot_graph(g, edge_index)
 
     ##################

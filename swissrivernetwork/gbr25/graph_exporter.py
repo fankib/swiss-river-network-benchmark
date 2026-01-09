@@ -6,11 +6,6 @@ import matplotlib.pyplot as plt
 from torch_geometric.data import Data
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-
-
-from swissrivernetwork.reader.graph_reader import ResourceRiverReaderFactory
-from swissrivernetwork.reader.water_reader import RawBafuReaderFactory
-
 from swissrivernetwork.util.datetime import to_datetime, from_unix_days
 
 '''

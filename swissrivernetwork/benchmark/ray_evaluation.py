@@ -221,7 +221,7 @@ def process_method(graph_name, method):
                             'NSE':col_nse,\
                             'N':col_n})
     
-    df.to_csv(f'swissrivernetwork/journal/dump/test_results/{graph_name}_{method}.csv', index=False)
+    df.to_csv(f'swissrivernetwork/benchmark/dump/test_results/{graph_name}_{method}.csv', index=False)
     
     plt.close('all')
     x,e = read_graph(graph_name)
@@ -236,7 +236,7 @@ def process_method(graph_name, method):
     
 
     plot_graph(x,e, information=information, color=color, vmin=0.5, vmax=1.5)
-    plt.savefig(f'swissrivernetwork/journal/dump/test_results/figure_{graph_name}_{method}.png', dpi=150)
+    plt.savefig(f'swissrivernetwork/benchmark/dump/test_results/figure_{graph_name}_{method}.png', dpi=150)
     
 
 

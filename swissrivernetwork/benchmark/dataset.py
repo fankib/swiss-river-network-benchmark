@@ -12,22 +12,22 @@ def read_stations(graph_name):
     return [str(i) for i in x[:, 2].numpy()]
 
 def read_graph(graph_name):
-    return torch.load(f'swissrivernetwork/journal/dump/graph_{graph_name}.pth')    
+    return torch.load(f'swissrivernetwork/benchmark/dump/graph_{graph_name}.pth')    
 
 def read_csv_train(graph_name):
-    return pd.read_csv(f'swissrivernetwork/journal/dump/{graph_name}_train.csv') # DUPLICATE?!
+    return pd.read_csv(f'swissrivernetwork/benchmark/dump/{graph_name}_train.csv') # DUPLICATE?!
 
 def read_csv_prediction_train(graph_name, station):
-    return pd.read_csv(f'swissrivernetwork/journal/dump/prediction/{graph_name}_lstm_{station}_train.csv')
+    return pd.read_csv(f'swissrivernetwork/benchmark/dump/prediction/{graph_name}_lstm_{station}_train.csv')
 
 def select_isolated_station(df, station):
     return df[['epoch_day', f'{station}_wt', f'{station}_at']].rename(columns={f'{station}_wt':'water_temperature', f'{station}_at':'air_temperature'})
 
 def read_csv_test(graph_name):
-    return pd.read_csv(f'swissrivernetwork/journal/dump/{graph_name}_test.csv')    
+    return pd.read_csv(f'swissrivernetwork/benchmark/dump/{graph_name}_test.csv')    
 
 def read_csv_prediction_test(graph_name, station):
-    return pd.read_csv(f'swissrivernetwork/journal/dump/prediction/{graph_name}_lstm_{station}_test.csv')    
+    return pd.read_csv(f'swissrivernetwork/benchmark/dump/prediction/{graph_name}_lstm_{station}_test.csv')    
 
 def normalize_isolated_station(df):
     # Normalize air temperature, water temperature

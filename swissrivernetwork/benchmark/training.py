@@ -13,7 +13,7 @@ def training_loop(config, dataloader_train, dataloader_valid, model, n_valid, us
         # Run the Trainig loop on the Model
         optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
         criterion = nn.MSELoss()
-        validation_criterion = nn.MSELoss(reduction='sum') # weight all samples equally
+        validation_criterion = nn.MSELoss(reduction='mean') # weight all samples equally
         
         for epoch in range(config['epochs']):
             model.train()
@@ -45,7 +45,7 @@ def training_loop(config, dataloader_train, dataloader_valid, model, n_valid, us
                     mask = ~torch.isnan(y) # mask NaNs
                     loss = validation_criterion(out[mask], y[mask])
                     validation_mse += loss.item()
-            validation_mse /= n_valid # normalize by dataset length
+            # use mean reducer -- is not perfect but makes more sense #validation_mse /= n_valid # normalize by dataset length
 
             # Register Ray Checkpoint
             checkpoint_dir = tempfile.mkdtemp()
@@ -57,6 +57,8 @@ def training_loop(config, dataloader_train, dataloader_valid, model, n_valid, us
             # report epoch loss
             report({"validation_mse": validation_mse}, checkpoint=checkpoint)        
             print(f'End of Epoch {epoch+1}: {validation_mse:.5f}')
+            # Debug for static embedding:
+            #print('embedding after:', model.embedding.weight)
     
     except RuntimeError as e:
         if "out of memory" in str(e).lower():
