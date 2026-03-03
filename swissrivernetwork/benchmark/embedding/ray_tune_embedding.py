@@ -7,7 +7,7 @@ from datetime import datetime
 from ray.tune import uniform, randint, run, choice, Callback
 from ray.tune.schedulers import ASHAScheduler
 
-from swissrivernetwork.benchmark.train_embedding_model import train_lstm_embedding
+from swissrivernetwork.benchmark.embedding.train_embedding_model import train_lstm_embedding
 
 
 '''

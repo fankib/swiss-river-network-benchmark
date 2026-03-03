@@ -18,8 +18,6 @@ from swissrivernetwork.benchmark.util import *
 SHOW_PLOT = False
 
 
-
-
 def run_lstm_model(model, df, normalizer_at, normalizer_wt, embedding_idx=None, use_embedding=False):
     # Predict test data:
     df['air_temperature'] = normalizer_at.transform(df['air_temperature'].values.reshape(-1, 1))

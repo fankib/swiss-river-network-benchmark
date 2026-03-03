@@ -76,7 +76,7 @@ def insert_static_embedding(graph_name, model, shuffle, random, one_hot):
     
     if one_hot:
         idx = torch.arange(embeddings_norm.size(0))
-        embeddings_norm = F.one_hot(idx)
+        embeddings_norm = F.one_hot(idx).float()
         print('[INFO] one hot encoded embeddings')
 
     # update embeddings:    
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     # fix 2010 bug:
     #graph_name = 'swiss-2010'
-    graph_name = 'swiss-1990'    
+    graph_name = 'swiss-1990'
 
     # model:
     method = ['concatenation_embedding',
@@ -121,7 +121,7 @@ if __name__ == '__main__':
              'embedding_gate_memory',
              'embedding_gate_hidden',
              'interpolation_embedding',
-             'vanilla'][0]
+             'vanilla'][2]
 
     # read stations:
     print(read_stations(graph_name))

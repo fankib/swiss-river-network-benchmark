@@ -66,15 +66,15 @@
 #python swissrivernetwork/benchmark/ray_tune_embedding.py -m interpolation_embedding -g swiss-2010 -n 100 --static_embedding --random_embedding
 
 # Run static embeddings, picked at random
-python swissrivernetwork/benchmark/ray_tune_embedding.py -m concatenation_embedding -g swiss-1990 -n 100 --static_embedding --one_hot_embedding
+#python swissrivernetwork/benchmark/ray_tune_embedding.py -m concatenation_embedding -g swiss-1990 -n 100 --static_embedding --one_hot_embedding
 python swissrivernetwork/benchmark/ray_tune_embedding.py -m embedding_gate_memory -g swiss-1990 -n 100 --static_embedding --one_hot_embedding
 python swissrivernetwork/benchmark/ray_tune_embedding.py -m interpolation_embedding -g swiss-1990 -n 100 --static_embedding --one_hot_embedding
 
-python swissrivernetwork/benchmark/ray_tune_embedding.py -m concatenation_embedding -g swiss-2010 -n 100 --static_embedding --one_hot_embedding
+#python swissrivernetwork/benchmark/ray_tune_embedding.py -m concatenation_embedding -g swiss-2010 -n 100 --static_embedding --one_hot_embedding
 python swissrivernetwork/benchmark/ray_tune_embedding.py -m embedding_gate_memory -g swiss-2010 -n 100 --static_embedding --one_hot_embedding
 python swissrivernetwork/benchmark/ray_tune_embedding.py -m interpolation_embedding -g swiss-2010 -n 100 --static_embedding --one_hot_embedding
 
-shutdown
+#shutdown
 
 
 # Run Vanilla LSTM

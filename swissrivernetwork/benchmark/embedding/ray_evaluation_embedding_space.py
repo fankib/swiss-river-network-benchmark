@@ -10,13 +10,13 @@ from matplotlib.animation import FFMpegWriter
 from ray.tune import ExperimentAnalysis
 
 from swissrivernetwork.benchmark.model import *
-from swissrivernetwork.benchmark.lstm_embedding import EMBEDDING_MODEL_FACTORY
+from swissrivernetwork.benchmark.embedding.lstm_embedding import EMBEDDING_MODEL_FACTORY
 from swissrivernetwork.benchmark.train_isolated_station import read_stations, read_graph
 from swissrivernetwork.benchmark.test_embedding_model import test_lstm_embedding
 
 from swissrivernetwork.gbr25.graph_exporter import plot_graph
 
-from swissrivernetwork.benchmark.ray_evaluation_embedding import experiment_analysis_single_model, experiment_analysis_lowd, experiment_analysis_static_embedding
+from swissrivernetwork.benchmark.embedding.ray_evaluation_embedding import experiment_analysis_single_model, experiment_analysis_lowd, experiment_analysis_static_embedding
 
 VERBOSE = True
 

@@ -9,7 +9,7 @@ from matplotlib.animation import FuncAnimation
 from ray.tune import ExperimentAnalysis
 
 from swissrivernetwork.benchmark.model import *
-from swissrivernetwork.benchmark.lstm_embedding import EMBEDDING_MODEL_FACTORY
+from swissrivernetwork.benchmark.embedding.lstm_embedding import EMBEDDING_MODEL_FACTORY
 from swissrivernetwork.benchmark.train_isolated_station import read_stations, read_graph
 from swissrivernetwork.benchmark.test_embedding_model import test_lstm_embedding
 
@@ -158,6 +158,28 @@ def experiment_analysis_random_embedding(graph_name, method):
     assert len(matching_items) == 1, 'Identifier is not unique'    
     return ExperimentAnalysis(f'{directory}/{matching_items[0]}')
 
+def experiment_analysis_one_hot_embedding(graph_name, method):
+    # Swiss-1990
+    if 'concatenation_embedding' == method and 'swiss-1990' == graph_name:        
+        date = '2026-01-14_17-39-34'    
+    if 'embedding_gate_memory' == method and 'swiss-1990' == graph_name:
+        date = '2026-01-15_11-24-16'    
+    if 'interpolation_embedding' == method and 'swiss-1990' == graph_name:        
+        date = '2026-01-15_13-36-01'
+
+    # Swiss-2010
+    if 'concatenation_embedding' == method and 'swiss-2010' == graph_name:
+        date = '2026-01-14_19-32-58'    
+    if 'embedding_gate_memory' == method and 'swiss-2010' == graph_name:
+        date = '2026-01-15_17-24-59'    
+    if 'interpolation_embedding' == method and 'swiss-2010' == graph_name:
+        date = '2026-01-15_20-35-00'
+    
+    directory = '/home/benjamin/ray_results'
+    matching_items = [item for item in os.listdir(directory) if date in item and method in item]
+    assert len(matching_items) == 1, 'Identifier is not unique'    
+    return ExperimentAnalysis(f'{directory}/{matching_items[0]}')
+
 
 def parameter_count(model):
     pytorch_total_params = sum(p.numel() for p in model.parameters())
@@ -171,7 +193,8 @@ def evaluate_best_trial_isolated_station(graph_name, method, station, i, noise):
     #analysis = experiment_analysis_lowd(graph_name, method)
     #analysis = experiment_analysis_static_embedding(graph_name, method)
     #analysis = experiment_analysis_shuffle_embedding(graph_name, method)
-    analysis = experiment_analysis_random_embedding(graph_name, method)
+    #analysis = experiment_analysis_random_embedding(graph_name, method)
+    analysis = experiment_analysis_one_hot_embedding(graph_name, method)
     
     #df = analysis.dataframe()
     # Get the best Trial:    
@@ -203,6 +226,11 @@ def evaluate_best_trial_isolated_station(graph_name, method, station, i, noise):
     model.eval()
 
     # static embedding should be stored in model file
+    # DEBUG
+    PRINT_EMBEDDING = True
+    if PRINT_EMBEDDING:
+        print('~~~ final embeddings: ~~~')
+        print(model.embedding.weight)
 
     # Gaussian embeddings
     if noise > 0:
@@ -339,7 +367,8 @@ if __name__ == '__main__':
             #analysis = experiment_analysis_lowd(graph_name, m)            
             #analysis = experiment_analysis_static_embedding(graph_name, m)
             #analysis = experiment_analysis_shuffle_embedding(graph_name, m)
-            analysis = experiment_analysis_random_embedding(graph_name, m)
+            #analysis = experiment_analysis_random_embedding(graph_name, m)
+            analysis = experiment_analysis_one_hot_embedding(graph_name, m)
 
             best_trial = analysis.get_best_trial(metric="validation_mse", mode="min", scope="all")    
             best_config = best_trial.config
