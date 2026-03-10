@@ -123,8 +123,10 @@ class SequenceDataset(torch.utils.data.Dataset):
         x = torch.stack(xs, dim=0)
         y = torch.stack(ys, dim=0)
 
-        # add empty embeddings
+        # add embedding idx per station
         embs = torch.zeros((x.shape[0], x.shape[1]), dtype=torch.long)
+        for i,station in enumerate(self.stations):
+            embs[i, :] = i        
 
         if t is None or embs is None or x is None or y is None:
             print('haaaaaalt!')

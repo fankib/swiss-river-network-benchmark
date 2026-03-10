@@ -1,4 +1,7 @@
 
+# TODO fix this script
+
+
 import os
 
 import torch
@@ -14,22 +17,12 @@ from swissrivernetwork.experiment.error import Error
 from swissrivernetwork.benchmark.model import *
 from swissrivernetwork.benchmark.dataset import *
 from swissrivernetwork.benchmark.util import *
+from swissrivernetwork.benchmark.attention.lstm_attention import *
 
+from swissrivernetwork.benchmark.test_single_model import fit_column_normalizers
 from swissrivernetwork.benchmark.test_isolated_station import compute_errors, plot, summary
 
-def fit_column_normalizers(df):
-    normalizers = dict()
-    columns = df.columns
-    for col in columns:               
-        df_col = df.loc[:, col]
-        normalizer = MinMaxScaler()
-        normalizer.fit(df[col].values.reshape(-1, 1))
-        normalizers[col] = normalizer
-    return normalizers    
-
-def test_stgnn(graph_name, model):
-    # TODO:
-    # Read Train Data for normalizer
+def test_attention_model(graph_name, model):        
     df_train = read_csv_train(graph_name)
     df_train = df_train.loc[:, ~df_train.columns.isin(['epoch_day', 'has_nan'])]
     normalizers = fit_column_normalizers(df_train)
@@ -37,9 +30,31 @@ def test_stgnn(graph_name, model):
     # Read Test Data
     stations = read_stations(graph_name)
     n_stations = len(stations)
-    num_embeddings = len(stations)
-    _,edges = read_graph(graph_name)
-    df = read_csv_test(graph_name)    
+    #num_embeddings = len(stations)
+    #_,edges = read_graph(graph_name)
+    df = read_csv_test(graph_name)  
+
+    # Run on validation data:
+    config = {'train_split': 0.8}
+    df_train = read_csv_train(graph_name)
+    df_train = normalize_columns(df_train)
+    df_train, df_valid = train_valid_split(config, df_train)  
+    dataset_valid = STGNNSequenceFullDataset(df_valid, stations)
+    dataloader_valid = torch.utils.data.DataLoader(dataset_valid, shuffle=False)
+
+    model.eval()
+    validation_mse = 0
+    validation_criterion = nn.MSELoss(reduction='mean')
+    with torch.no_grad():
+        for _,e,x,y in dataloader_valid:
+            
+            # only use refined output
+            _,out = model(e, x)            
+            
+            mask = ~torch.isnan(y) # mask NaNs
+            loss = validation_criterion(out[mask], y[mask])
+            validation_mse += loss.item()
+    print(f'Validation Loss: {validation_mse:.5f}')
 
     # Normalize Input Values:
     for station in stations:
@@ -57,20 +72,18 @@ def test_stgnn(graph_name, model):
     masks = [[] for _ in range(n_stations)]
     actual = [[] for _ in range(n_stations)]
     prediction = [[] for _ in range(n_stations)]    
+    model.eval()    
     with torch.no_grad():
-        model.eval()
-        for (t,e,x,y) in dataloader:
-
-            # Run Model
-            out = model(x, edges)            
+        for t,e,x,y in dataloader:
+                    
+            # only use refined output
+            _,out = model(e, x)            
 
             # Check for only one batch:
             assert 1 == out.shape[0] and 1 == y.shape[0], 'only one batch supported!'
 
             # Split the predictions per station:
-            mask = ~torch.isnan(y)
-            #y = y[mask]      
-            #out_masked = out[mask]      
+            mask = ~torch.isnan(y)            
             for i, station in enumerate(stations):
 
                 # Store epoch_days and prediction_norm on all days:
@@ -111,18 +124,19 @@ def test_stgnn(graph_name, model):
         print(title)
 
         # Plot Figure of Test Data
-        plot(graph_name, 'stgnn', station, epoch_days[i][masks[i]], actual[i], prediction[i], title)
+        plot(graph_name, 'attention_model_1', station, epoch_days[i][masks[i]], actual[i], prediction[i], title)
 
         rmses.append(rmse)
         maes.append(mae)
         nses.append(nse)
         ns.append(len(prediction))
 
+    print('AVG RMSE:', np.mean(rmses))
     return rmses, maes, nses, ns
 
 if __name__ == '__main__':
 
-    method = 'stgnn'
+    method = 'attention_model_1'
     graph_name = 'swiss-1990'
 
     # Read statistics
@@ -130,7 +144,7 @@ if __name__ == '__main__':
     num_embeddings = len(stations)
 
     # Load a model from a config:
-    analysis = ExperimentAnalysis(f'/home/benjamin/ray_results/stgnn-2025-06-16_16-11-22')
+    analysis = ExperimentAnalysis(f'/home/benjamin/ray_results/attention_model_1-2026-03-09_18-30-55')
 
     # COPY CODE
     # Get best trial and load model:
@@ -142,11 +156,10 @@ if __name__ == '__main__':
 
     # COPY CODE:
     # Create Model
-    model = SpatioTemporalEmbeddingModel(best_config['gnn_conv'], 1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_layers'], best_config['num_convs'])
-    model_file = sorted(os.listdir(best_checkpoint.path))[0]
-    model.load_state_dict(torch.load(f'{best_checkpoint.path}/{model_file}'))
+    model = ConcatenationEmbeddingModel(1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_heads'])
+    #path = best_checkpoint.path
+    path = "/tmp/tmpocporapa"
+    model_file = sorted(os.listdir(path))[0] # single file in folder
+    model.load_state_dict(torch.load(f'{path}/{model_file}'))
 
-    test_stgnn(graph_name, model)
-
-
-    
+    test_attention_model(graph_name, model)

@@ -16,49 +16,48 @@ class ConcatenationEmbeddingModel(nn.Module):
         self.lstm_1 = VanillaLSTM(input_size + embedding_size, hidden_size)
         self.linear_1 = nn.Linear(hidden_size, 1)
 
-        self.embedding_attention = nn.Embedding(num_embeddings, embedding_size)
+        self.attention_embedding = nn.Embedding(num_embeddings, hidden_size)
+        self.mha = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=num_heads, batch_first=True)
+        self.attention_norm = nn.LayerNorm(hidden_size)
+        
         self.embedding_2 = nn.Embedding(num_embeddings, embedding_size)
-        self.lstm_2 = VanillaLSTM(input_size + hidden_size + embedding_size, hidden_size)
+        self.lstm_2 = VanillaLSTM(hidden_size + embedding_size, hidden_size)
         self.linear_2 = nn.Linear(hidden_size, 1)
 
-    def forward(self, e, x, emb=None):
-        batch_size, seq_len, _ = x.size()
+    def forward(self, e, x, emb=None):        
 
-        # ----- First LSTM -----
-        if emb is None:
-            emb = self.embedding_1(e)  # [batch x seq x embedding]
-        x_1 = torch.cat((emb, x), dim=2)
+        batch, stations, sequence, dimensions = x.shape
+
+        # ----- First LSTM -----        
+        emb = self.embedding_1(e)  # [batch x stations x seq x embedding]
+        x_1 = torch.cat((emb, x), dim=3)       
+
+        x_1 = x_1.reshape(batch*stations, sequence, dimensions+self.embedding_size)
         out_1, hidden = self.lstm_1(x_1)
         target_1 = self.linear_1(out_1)
+        out_1 = out_1.reshape(batch, stations, sequence, self.hidden_size)
+        target_1 = target_1.reshape(batch, stations, sequence, 1)
+        
 
-        # ----- Multi-Head Attention -----
-        # Get Q, K from station-specific embeddings
-        Q = self.embedding_attention(e)  # [batch x seq x embedding]
-        K = self.embedding_attention(e)
-
-        # Split for multi-head
-        def split_heads(tensor):
-            # [batch, seq, embedding] -> [batch, heads, seq, head_dim]
-            head_dim = self.embedding_size // self.num_heads
-            return tensor.view(batch_size, seq_len, self.num_heads, head_dim).transpose(1, 2)
-
-        Q_heads = split_heads(Q)
-        K_heads = split_heads(K)
-        V_heads = split_heads(out_1)  # value comes from LSTM output
-
-        # Scaled dot-product attention
-        scores = torch.matmul(Q_heads, K_heads.transpose(-2, -1)) / (self.embedding_size ** 0.5)  # [batch, heads, seq, seq]
-        attn_weights = F.softmax(scores, dim=-1)
-        attn_output = torch.matmul(attn_weights, V_heads)  # [batch, heads, seq, head_dim]
-
-        # Concatenate heads
-        attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_len, self.hidden_size)
+        # --- Multi-Head Attention over Stations:
+        # preapare "station encoding"
+        emb = self.attention_embedding(e)
+        out_1 = out_1 + emb # superimpose embedding
+        
+        out_1 = out_1.permute(0, 2, 1, 3).contiguous() # [batch x seq x stations x embedding]
+        out_1 = out_1.reshape(batch*sequence, stations, self.hidden_size)
+        out_attention, weights = self.mha(out_1, out_1, out_1)
+        out_attention = self.attention_norm(out_1 + out_attention) # skip connection + layer norm
+        out_attention = out_attention.reshape(batch, sequence, stations, self.hidden_size)
+        out_attention = out_attention.permute(0, 2, 1, 3).contiguous() # restore permutation
 
         # ----- Second LSTM -----
-        emb2 = self.embedding_2(e)
-        x2 = torch.cat((emb2, attn_output), dim=2)  # combine LSTM output after attention + new embedding
-        out2, hidden = self.lstm_2(x2)
-        target_2 = self.linear_2(out2)
+        emb = self.embedding_2(e)
+        x_2 = torch.cat((emb, out_attention), dim=3)  # combine LSTM output after attention + new embedding
+        x_2 = x_2.reshape(batch*stations, sequence, self.hidden_size+self.embedding_size)
+        out_2, hidden = self.lstm_2(x_2)
+        target_2 = self.linear_2(out_2)
+        target_2 = target_2.reshape(batch, stations, sequence, 1)
 
         return target_1, target_2
 
@@ -338,8 +337,8 @@ class StepwiseLSTMAttentionModel(nn.Module):
 #Attention Models?
 
 ATTENTION_MODEL_FACTORY = {
-    'attention_model_1': ConcatenationEmbeddingModel,
-    'attention_model_2': ImprovedConcatenationEmbeddingModel,
+    'attention_model_1': ConcatenationEmbeddingModel
+    #'attention_model_2': ImprovedConcatenationEmbeddingModel,
 }
 
 ## Double Loss Attention Model
