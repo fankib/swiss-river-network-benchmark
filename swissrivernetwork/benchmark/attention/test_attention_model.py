@@ -49,7 +49,7 @@ def test_attention_model(graph_name, model):
         for _,e,x,y in dataloader_valid:
             
             # only use refined output
-            _,out = model(e, x)            
+            _,out,_ = model(e, x)            
             
             mask = ~torch.isnan(y) # mask NaNs
             loss = validation_criterion(out[mask], y[mask])
@@ -72,15 +72,20 @@ def test_attention_model(graph_name, model):
     masks = [[] for _ in range(n_stations)]
     actual = [[] for _ in range(n_stations)]
     prediction = [[] for _ in range(n_stations)]    
-    model.eval()    
+    model.eval()
+    print("How many test Sequences? -", len(dataloader))    
+    weights = []
     with torch.no_grad():
         for t,e,x,y in dataloader:
                     
             # only use refined output
-            _,out = model(e, x)            
+            _,out,w = model(e, x)            
 
             # Check for only one batch:
             assert 1 == out.shape[0] and 1 == y.shape[0], 'only one batch supported!'
+
+            # Store weights:
+            weights.append(w.detach().numpy())
 
             # Split the predictions per station:
             mask = ~torch.isnan(y)            
@@ -104,6 +109,10 @@ def test_attention_model(graph_name, model):
                 # Store values            
                 actual[i].append(ys.detach().numpy()) # Original                
                 prediction[i].append(outs.flatten()) # Denormalized Prediction
+
+    # dump weights:
+    weights = np.concatenate(weights, axis=0)
+    np.save("swissrivernetwork/benchmark/dump/attention/weights.npy", weights)
 
     # Combine arrays:
     for i in range(n_stations):
@@ -131,7 +140,8 @@ def test_attention_model(graph_name, model):
         nses.append(nse)
         ns.append(len(prediction))
 
-    print('AVG RMSE:', np.mean(rmses))
+
+    print('AVG RMSE:', np.mean(rmses), 'MED RMSE:', np.median(rmses))
     return rmses, maes, nses, ns
 
 if __name__ == '__main__':
@@ -143,8 +153,13 @@ if __name__ == '__main__':
     stations = read_stations(graph_name)
     num_embeddings = len(stations)
 
+    print("Debug: top 5 stations:")
+    for idx in [21, 25, 22, 17, 9]:
+        print(f'Idx: {idx} = {stations[idx]}')
+    #exit()
+
     # Load a model from a config:
-    analysis = ExperimentAnalysis(f'/home/benjamin/ray_results/attention_model_1-2026-03-09_18-30-55')
+    analysis = ExperimentAnalysis(f'/home/benjamin/ray_results/attention_model_1-2026-03-10_17-02-58')
 
     # COPY CODE
     # Get best trial and load model:
@@ -158,7 +173,7 @@ if __name__ == '__main__':
     # Create Model
     model = ConcatenationEmbeddingModel(1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_heads'])
     #path = best_checkpoint.path
-    path = "/tmp/tmpocporapa"
+    path = "/tmp/tmpnv8x85h6"
     model_file = sorted(os.listdir(path))[0] # single file in folder
     model.load_state_dict(torch.load(f'{path}/{model_file}'))
 

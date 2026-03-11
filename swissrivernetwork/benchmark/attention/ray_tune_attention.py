@@ -76,7 +76,8 @@ def run_experiment(method, graph_name, num_samples):
         scheduler = scheduler(), # ASHA is quite a speedup        
         num_samples = num_samples,
         metric = 'validation_mse',
-        mode = 'min'                
+        mode = 'min',
+        max_concurrent_trials=5
     )
 
     print(f'\n\n~~~ Analysis of {method} ~~~')

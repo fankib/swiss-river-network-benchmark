@@ -8,6 +8,7 @@ import torch.nn.functional as F
 class ConcatenationEmbeddingModel(nn.Module):
     def __init__(self, input_size, num_embeddings, embedding_size, hidden_size, num_heads):
         super().__init__()
+        self.input_size = input_size
         self.num_heads = num_heads
         self.hidden_size = hidden_size
         self.embedding_size = embedding_size
@@ -21,7 +22,7 @@ class ConcatenationEmbeddingModel(nn.Module):
         self.attention_norm = nn.LayerNorm(hidden_size)
         
         self.embedding_2 = nn.Embedding(num_embeddings, embedding_size)
-        self.lstm_2 = VanillaLSTM(hidden_size + embedding_size, hidden_size)
+        self.lstm_2 = VanillaLSTM(hidden_size + embedding_size + input_size, hidden_size)
         self.linear_2 = nn.Linear(hidden_size, 1)
 
     def forward(self, e, x, emb=None):        
@@ -46,20 +47,39 @@ class ConcatenationEmbeddingModel(nn.Module):
         
         out_1 = out_1.permute(0, 2, 1, 3).contiguous() # [batch x seq x stations x embedding]
         out_1 = out_1.reshape(batch*sequence, stations, self.hidden_size)
-        out_attention, weights = self.mha(out_1, out_1, out_1)
+        
+        # Build mask: block all stations from attending TO stations 24 and 27
+        # attn_mask shape: (stations, stations) — additive mask, -inf = blocked
+        ATTENTION_MASK = False
+        if ATTENTION_MASK:
+            attn_mask = torch.zeros(stations, stations, device=out_1.device)
+            attn_mask[:, 24] = float('-inf')  # no station can attend to station 24
+            attn_mask[:, 27] = float('-inf')  # no station can attend to station 27
+            out_attention, weights = self.mha(out_1, out_1, out_1, attn_mask=attn_mask)
+        else:
+            out_attention, weights = self.mha(out_1, out_1, out_1) # do not use attention mask
+        
+        SHOW_HEATMAP = False
+        if SHOW_HEATMAP:
+            import seaborn as sns
+            import matplotlib.pyplot as plt
+            mean_weights = weights.mean(axis=0).detach().numpy()
+            sns.heatmap(mean_weights, linewidths=0.5, linecolor='grey', annot=False)
+            plt.show()
+
         out_attention = self.attention_norm(out_1 + out_attention) # skip connection + layer norm
         out_attention = out_attention.reshape(batch, sequence, stations, self.hidden_size)
         out_attention = out_attention.permute(0, 2, 1, 3).contiguous() # restore permutation
 
         # ----- Second LSTM -----
         emb = self.embedding_2(e)
-        x_2 = torch.cat((emb, out_attention), dim=3)  # combine LSTM output after attention + new embedding
-        x_2 = x_2.reshape(batch*stations, sequence, self.hidden_size+self.embedding_size)
+        x_2 = torch.cat((emb, out_attention, x), dim=3)  # combine LSTM output after attention + new embedding + at
+        x_2 = x_2.reshape(batch*stations, sequence, self.hidden_size+self.embedding_size+self.input_size)
         out_2, hidden = self.lstm_2(x_2)
         target_2 = self.linear_2(out_2)
         target_2 = target_2.reshape(batch, stations, sequence, 1)
 
-        return target_1, target_2
+        return target_1, target_2, weights
 
 
 ### CHATGPT Improved:

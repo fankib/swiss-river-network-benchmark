@@ -36,7 +36,15 @@ def train_lstm_attention(config):
     # Run Training Loop!
     training_loop(config, dataloader_train, dataloader_valid, model)   
 
+# penalizes high entropy among rows
+def attention_entropy_loss(weights):
+    entropy = -(weights * torch.log(weights + 1e-9)).sum(dim=-1)
+    return -entropy.mean()
 
+def column_concentration_loss(weights):
+    mean_w = weights.mean(axis=0)
+    column_sum = mean_w.sum(axis=0)
+    return (column_sum **2).mean()
 
 # This training loop consists of two losses
 # Loss1: direct prediction loss (LSTM-E Model)
@@ -52,22 +60,36 @@ def training_loop(config, dataloader_train, dataloader_valid, model):
         for epoch in range(config['epochs']):
             model.train()
             losses = []
+            regularization = []
             for _,e,x,y in dataloader_train:
                 optimizer.zero_grad()
 
                 # embedding by default                
-                out1, out2 = model(e, x) # Two losses
+                out1, out2, weights = model(e, x) # Two losses
                 
                 mask = ~torch.isnan(y) # mask NaNs            
-                loss1 = criterion(out1[mask], y[mask])
-                loss1.backward(retain_graph=True)
+                loss1 = criterion(out1[mask], y[mask])                
 
                 # refined loss:
                 loss2 = criterion(out2[mask], y[mask])
-                loss2.backward()
+                
+                # entropy loss
+                #entropy_loss = attention_entropy_loss(weights)
+
+                # column_sum loss:
+                column_reg = column_concentration_loss(weights)
+
+                # initialize using LSTM-E Only
+                if epoch < 2:
+                    loss = loss1
+                else:
+                    loss = loss2 + 0.01*column_reg
+                loss.backward()
+
 
                 optimizer.step()
-                losses.append(loss1.item() + loss2.item())
+                losses.append(loss.item())
+                regularization.append(column_reg.item())
 
             model.eval()
             validation_mse = 0
@@ -75,7 +97,7 @@ def training_loop(config, dataloader_train, dataloader_valid, model):
                 for _,e,x,y in dataloader_valid:
                     
                     # only use refined output
-                    _,out = model(e, x)
+                    _,out,weights = model(e, x)
                     
                     mask = ~torch.isnan(y) # mask NaNs
                     loss = validation_criterion(out[mask], y[mask])
@@ -86,9 +108,11 @@ def training_loop(config, dataloader_train, dataloader_valid, model):
             save(model.state_dict(), checkpoint_dir, f'lstm_epoch_{epoch+1}.pth')            
             checkpoint = Checkpoint.from_directory(checkpoint_dir)
 
+
             # report epoch loss
             report({"validation_mse": validation_mse}, checkpoint=checkpoint)        
-            print(f'End of Epoch {epoch+1}: {validation_mse:.5f}')            
+            print(f'End of Epoch {epoch+1}: {validation_mse:.5f}')        
+            print(f"Training Loss: {np.mean(losses):.5f}", f"Regularization: {np.mean(regularization):.5f}")    
     
     except RuntimeError as e:
         if "out of memory" in str(e).lower():
@@ -101,27 +125,28 @@ def training_loop(config, dataloader_train, dataloader_valid, model):
 
 if __name__ == '__main__':
     
-    #graph_name = 'swiss-2010'
-    graph_name = 'swiss-1990'
+    graph_name = 'swiss-2010'
+    #graph_name = 'swiss-1990'
 
     # model:
     method = ['attention_model_1',
               'attention_model_2'][0]
 
     # read stations:
-    print(read_stations(graph_name))
+    #print(read_stations(graph_name))
 
     config = {
         'graph_name': graph_name,
         'method': method,
-        'batch_size': 64,
+        'batch_size': 32,
         'window_len': 90,
         'train_split': 0.8,
-        'learning_rate': 0.0079,
+        'learning_rate': 0.009834642592420203,
         'epochs': 15,
         'embedding_size': 2,      
-        'hidden_size': 32,    
-        'num_heads': 4,
+        'hidden_size': 64,    
+        'num_heads': 2,
     }    
-        
+
+
     train_lstm_attention(config)    
