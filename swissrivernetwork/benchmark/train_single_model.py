@@ -75,7 +75,8 @@ if __name__ == '__main__':
 
     # fix 2010 bug:
     #graph_name = 'swiss-2010'
-    graph_name = 'swiss-1990'    
+    #graph_name = 'swiss-1990'
+    graph_name = 'swiss-2010-attention'    
 
     # read stations:
     print(read_stations(graph_name))
@@ -90,10 +91,10 @@ if __name__ == '__main__':
         'embedding_size': 5,
         'hidden_size': 32,
         'num_layers': 1,
-        'gnn_conv': 'GraphSAGE',
+        'gnn_conv': 'GCN',
         'num_convs': 1,
-        'num_heads': 0
+        'num_heads': 0        
     }
         
-    train_lstm_embedding(config)
-    #train_stgnn(config)
+    #train_lstm_embedding(config)
+    train_stgnn(config)

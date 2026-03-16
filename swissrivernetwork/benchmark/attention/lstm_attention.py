@@ -3,7 +3,13 @@ from swissrivernetwork.benchmark.embedding.lstm_embedding import *
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import seaborn as sns
+import matplotlib.pyplot as plt
 
+def show_heatmap(weights):
+    mean_weights = weights.mean(axis=0).detach().numpy()
+    sns.heatmap(mean_weights, linewidths=0.5, linecolor='grey', annot=False)
+    plt.show()
 
 class ConcatenationEmbeddingModel(nn.Module):
     def __init__(self, input_size, num_embeddings, embedding_size, hidden_size, num_heads):
@@ -61,11 +67,8 @@ class ConcatenationEmbeddingModel(nn.Module):
         
         SHOW_HEATMAP = False
         if SHOW_HEATMAP:
-            import seaborn as sns
-            import matplotlib.pyplot as plt
-            mean_weights = weights.mean(axis=0).detach().numpy()
-            sns.heatmap(mean_weights, linewidths=0.5, linecolor='grey', annot=False)
-            plt.show()
+            show_heatmap(weights)
+
 
         out_attention = self.attention_norm(out_1 + out_attention) # skip connection + layer norm
         out_attention = out_attention.reshape(batch, sequence, stations, self.hidden_size)
@@ -75,6 +78,72 @@ class ConcatenationEmbeddingModel(nn.Module):
         emb = self.embedding_2(e)
         x_2 = torch.cat((emb, out_attention, x), dim=3)  # combine LSTM output after attention + new embedding + at
         x_2 = x_2.reshape(batch*stations, sequence, self.hidden_size+self.embedding_size+self.input_size)
+        out_2, hidden = self.lstm_2(x_2)
+        target_2 = self.linear_2(out_2)
+        target_2 = target_2.reshape(batch, stations, sequence, 1)
+
+        return target_1, target_2, weights
+    
+class GraphletAttentionModel(nn.Module):
+    def __init__(self, input_size, num_embeddings, embedding_size, hidden_size, num_heads):
+        super().__init__()
+        self.input_size = input_size
+        self.num_heads = num_heads
+        self.hidden_size = hidden_size
+        self.embedding_size = embedding_size
+
+        self.embedding_1 = nn.Embedding(num_embeddings, embedding_size)
+        self.lstm_1 = VanillaLSTM(input_size + embedding_size, hidden_size)
+        self.linear_1 = nn.Linear(hidden_size, 1) # use the predicted temperature
+
+        self.attention_embedding = nn.Embedding(num_embeddings, embedding_size)
+        self.mha = nn.MultiheadAttention(embed_dim=embedding_size, num_heads=num_heads, kdim=embedding_size, vdim=1, batch_first=True)
+        self.attention_norm = nn.LayerNorm(embedding_size)
+        
+        self.embedding_2 = nn.Embedding(num_embeddings, embedding_size)
+        self.lstm_2 = VanillaLSTM(embedding_size + embedding_size + input_size, hidden_size)
+        self.linear_2 = nn.Linear(hidden_size, 1)
+
+    def forward(self, e, x, emb=None):        
+
+        batch, stations, sequence, dimensions = x.shape
+
+        # ----- First LSTM -----        
+        emb = self.embedding_1(e)  # [batch x stations x seq x embedding]
+        x_1 = torch.cat((emb, x), dim=3)       
+
+        x_1 = x_1.reshape(batch*stations, sequence, dimensions+self.embedding_size)
+        out_1, hidden = self.lstm_1(x_1)
+        target_1 = self.linear_1(out_1)
+        out_1 = out_1.reshape(batch, stations, sequence, self.hidden_size)
+        target_1 = target_1.reshape(batch, stations, sequence, 1)
+        
+
+        # --- Multi-Head Attention over Stations:
+        # only over \hat{wt}
+        emb = self.attention_embedding(e)
+        
+        emb = emb.permute(0, 2, 1, 3).contiguous()
+        emb = emb.reshape(batch*sequence, stations, self.embedding_size)
+        wt_hat = target_1.permute(0, 2, 1, 3).contiguous() # [batch x seq x stations x 1]
+        wt_hat = wt_hat.reshape(batch*sequence, stations, 1)
+
+        out_attention, weights = self.mha(emb, emb, wt_hat) # do not use attention mask
+        
+        SHOW_HEATMAP = False
+        if SHOW_HEATMAP:
+            show_heatmap(weights)
+
+        #out_attention = self.attention_norm(out_1 + out_attention) # skip connection + layer norm 
+        #norm?
+
+        out_attention = out_attention.reshape(batch, sequence, stations, self.embedding_size)
+        out_attention = out_attention.permute(0, 2, 1, 3).contiguous() # restore permutation
+
+        # ----- Second LSTM -----
+        emb = self.embedding_2(e)
+        x_2 = torch.cat((emb, out_attention, x), dim=3)  # combine LSTM output after attention + new embedding + at
+        x_2 = x_2.reshape(batch*stations, sequence, self.embedding_size+self.embedding_size+self.input_size)
         out_2, hidden = self.lstm_2(x_2)
         target_2 = self.linear_2(out_2)
         target_2 = target_2.reshape(batch, stations, sequence, 1)
@@ -357,7 +426,8 @@ class StepwiseLSTMAttentionModel(nn.Module):
 #Attention Models?
 
 ATTENTION_MODEL_FACTORY = {
-    'attention_model_1': ConcatenationEmbeddingModel
+    'attention_model_1': ConcatenationEmbeddingModel,
+    'graphlet_attention_model': GraphletAttentionModel
     #'attention_model_2': ImprovedConcatenationEmbeddingModel,
 }
 

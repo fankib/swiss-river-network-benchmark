@@ -112,7 +112,7 @@ def test_attention_model(graph_name, model):
 
     # dump weights:
     weights = np.concatenate(weights, axis=0)
-    np.save("swissrivernetwork/benchmark/dump/attention/weights.npy", weights)
+    np.save(f"swissrivernetwork/benchmark/dump/attention/weights-{graph_name}.npy", weights)
 
     # Combine arrays:
     for i in range(n_stations):
@@ -146,20 +146,17 @@ def test_attention_model(graph_name, model):
 
 if __name__ == '__main__':
 
-    method = 'attention_model_1'
-    graph_name = 'swiss-1990'
+    #method = ['attention_model_1', 'graphlet_attention_model'][1]
+    
 
-    # Read statistics
-    stations = read_stations(graph_name)
-    num_embeddings = len(stations)
-
-    print("Debug: top 5 stations:")
-    for idx in [21, 25, 22, 17, 9]:
-        print(f'Idx: {idx} = {stations[idx]}')
+#    print("Debug: top 5 stations:")
+#    for idx in [21, 25, 22, 17, 9]:
+#        print(f'Idx: {idx} = {stations[idx]}')
     #exit()
 
     # Load a model from a config:
-    analysis = ExperimentAnalysis(f'/home/benjamin/ray_results/attention_model_1-2026-03-10_17-02-58')
+    #analysis = ExperimentAnalysis(f'/home/benjamin/ray_results/attention_model_1-2026-03-10_17-02-58') # deprecated ?
+    analysis = ExperimentAnalysis('/home/benjamin/ray_results/attention_model_1-2026-03-11_17-47-57') # good model swiss-2010
 
     # COPY CODE
     # Get best trial and load model:
@@ -169,11 +166,30 @@ if __name__ == '__main__':
     best_checkpoint = analysis.get_best_checkpoint(best_trial, metric="validation_mse", mode="min")
     print('use best config:', best_config)
 
+    #graph_name = ['swiss-1990', 'swiss-2010'][1]
+    graph_name = best_config['graph_name']
+
+    # Read statistics
+    stations = read_stations(graph_name)
+    num_embeddings = len(stations)
+
+    USE_TEMP_FILE = False
+    if USE_TEMP_FILE:
+        # Setup for GraphletAttentionModel
+        best_config['embedding_size'] = 8
+        best_config['hidden_size'] = 64
+        best_config['num_heads'] = 2
+        path = "/tmp/tmp5xikfvg6"
+    else:        
+        path = best_checkpoint.path
+
     # COPY CODE:
     # Create Model
-    model = ConcatenationEmbeddingModel(1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_heads'])
-    #path = best_checkpoint.path
-    path = "/tmp/tmpnv8x85h6"
+    model_factory = ATTENTION_MODEL_FACTORY[best_config['method']]    
+    model = model_factory(1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_heads'])
+    
+    #model = GraphletAttentionModel(1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_heads'])    
+    
     model_file = sorted(os.listdir(path))[0] # single file in folder
     model.load_state_dict(torch.load(f'{path}/{model_file}'))
 

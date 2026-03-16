@@ -15,6 +15,7 @@ def read_graph(graph_name):
     return torch.load(f'swissrivernetwork/benchmark/dump/graph_{graph_name}.pth')    
 
 def read_csv_train(graph_name):
+    graph_name = graph_name.replace("-attention", "")
     return pd.read_csv(f'swissrivernetwork/benchmark/dump/{graph_name}_train.csv') # DUPLICATE?!
 
 def read_csv_prediction_train(graph_name, station):
@@ -24,6 +25,7 @@ def select_isolated_station(df, station):
     return df[['epoch_day', f'{station}_wt', f'{station}_at']].rename(columns={f'{station}_wt':'water_temperature', f'{station}_at':'air_temperature'})
 
 def read_csv_test(graph_name):
+    graph_name = graph_name.replace("-attention", "")
     return pd.read_csv(f'swissrivernetwork/benchmark/dump/{graph_name}_test.csv')    
 
 def read_csv_prediction_test(graph_name, station):

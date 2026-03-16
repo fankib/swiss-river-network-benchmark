@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.animation import FuncAnimation
 
+graph_name = ['swiss-1990', 'swiss-2010'][0]
+
 # load data
-weights = np.load("swissrivernetwork/benchmark/dump/attention/weights.npy")
+weights = np.load(f"swissrivernetwork/benchmark/dump/attention/weights-{graph_name}.npy")
 
 t = weights.shape[0]
 

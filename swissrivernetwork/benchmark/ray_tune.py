@@ -65,9 +65,8 @@ search_space_stgnn = {
     "embedding_size": randint(1, 30+1),
     "hidden_size": randint(16, 128+1), #128    
     "num_layers": randint(1,3+1), # more layers!
-    #"gnn_conv": choice(['GCN', 'GIN']),
-    "gnn_conv": choice(['GraphSAGE']),
-    "num_convs": randint(1, 7+1)
+    "gnn_conv": choice(['GCN', 'GIN', 'GraphSAGE']),    
+    "num_convs": randint(1, 3+1)
 }
 
 def scheduler():
@@ -175,7 +174,7 @@ def run_experiment(method, graph_name, num_samples):
 if __name__ == '__main__':
 
     methods = ['lstm', 'graphlet', 'lstm_embedding', 'stgnn']
-    graphs = ['swiss-1990', 'swiss-2010', 'zurich']
+    graphs = ['swiss-1990', 'swiss-2010', 'zurich', 'swiss-2010-attention']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--method', required=True, choices=methods)

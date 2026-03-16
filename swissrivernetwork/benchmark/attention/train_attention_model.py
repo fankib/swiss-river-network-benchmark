@@ -79,11 +79,14 @@ def training_loop(config, dataloader_train, dataloader_valid, model):
                 # column_sum loss:
                 column_reg = column_concentration_loss(weights)
 
-                # initialize using LSTM-E Only
-                if epoch < 2:
-                    loss = loss1
-                else:
-                    loss = loss2 + 0.01*column_reg
+                if config['method'] == 'attention_model_1':
+                    # initialize using LSTM-E Only
+                    if epoch < 2:
+                        loss = loss1
+                    else:
+                        loss = loss2 + 0.01*column_reg
+                if config['method'] == 'graphlet_attention_model':
+                    loss = 0.3*loss1 + loss2 + 0.01*column_reg
                 loss.backward()
 
 
@@ -130,23 +133,36 @@ if __name__ == '__main__':
 
     # model:
     method = ['attention_model_1',
-              'attention_model_2'][0]
+              'graphlet_attention_model'][1]
 
     # read stations:
     #print(read_stations(graph_name))
 
+    #config = {
+    #    'graph_name': graph_name,
+    #    'method': method,
+    #    'batch_size': 32,
+    #    'window_len': 90,
+    #    'train_split': 0.8,
+    #    'learning_rate': 0.009834642592420203,
+    #    'epochs': 15,
+    #    'embedding_size': 2,      
+    #    'hidden_size': 64,    
+    #    'num_heads': 2,
+    #}  
+    # 
+    
     config = {
         'graph_name': graph_name,
         'method': method,
         'batch_size': 32,
         'window_len': 90,
         'train_split': 0.8,
-        'learning_rate': 0.009834642592420203,
+        'learning_rate': 0.01,
         'epochs': 15,
-        'embedding_size': 2,      
-        'hidden_size': 64,    
-        'num_heads': 2,
-    }    
-
+        'embedding_size': 8,
+        'hidden_size': 64,
+        'num_heads': 2, # must divide embedding_size
+    }
 
     train_lstm_attention(config)    

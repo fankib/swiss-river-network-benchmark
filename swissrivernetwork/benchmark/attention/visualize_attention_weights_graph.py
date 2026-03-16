@@ -7,14 +7,39 @@ from swissrivernetwork.benchmark.dataset import *
 from swissrivernetwork.benchmark.util import *
 
 # Setup
-graph_name = "swiss-1990"
+graph_name = ['swiss-1990', 'swiss-2010'][1]
 
 # Load data
-weights = np.load("swissrivernetwork/benchmark/dump/attention/weights.npy")  # (t, 28, 28)
+weights = np.load(f"swissrivernetwork/benchmark/dump/attention/weights-{graph_name}.npy") 
 g, e = read_graph(graph_name)
+
+print(g, e)
+print('shape', e.shape)
+#exit()
+
 
 x = g[:, 0]
 y = g[:, 1]
+
+#fix weights in average time:
+weights = weights.mean(axis=0)[np.newaxis, :]
+
+# extract graph structure from mean attention weights
+A = weights[0]
+# Create symmetric Attention:
+#A_sym = (A + A.T) / 2        # average both directions
+# or
+A_sym = np.maximum(A, A.T)   # take the stronger direction
+
+Atop1 = np.argpartition(A_sym, -1, axis=1)[:, -1:]
+
+# create new edges:
+e_to = torch.arange(g.shape[0])#.repeat_interleave(2)
+e_from = torch.from_numpy(Atop1).flatten()
+edge_index = torch.stack([e_from, e_to], dim=0)
+print(edge_index)
+print('shape:', edge_index.shape)
+torch.save((g,e), f'swissrivernetwork/benchmark/dump/graph_{graph_name}-attention.pth') 
 
 t = weights.shape[0]
 
@@ -45,11 +70,26 @@ def update(frame):
 
     A = weights[frame]
 
+    # Create symmetric Attention:
+    #A_sym = (A + A.T) / 2        # average both directions
+    # or
+    A_sym = np.maximum(A, A.T)   # take the stronger direction
+
+    Atop1 = np.argpartition(A_sym, -1, axis=1)[:, -1:]
+
+
+        
+
     for i in range(A.shape[0]):
-        for j in range(A.shape[1]):
-            w = A[i, j] # j's contribution to i
-            if w <= 0.1:
-                continue
+        tops = Atop1[i]
+        
+        # for j in range(A.shape[1]):
+        for j in tops:
+
+            # w = A[i, j] # j's contribution to i
+            w = A_sym[i, j] 
+            #if w <= 0.1:
+            #    continue
             color = cmap(norm(w))
             lw = 5*norm(w)
             a = max(0, -0.1 + 1.1*norm(w))
