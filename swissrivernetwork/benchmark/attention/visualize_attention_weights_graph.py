@@ -39,7 +39,7 @@ e_from = torch.from_numpy(Atop1).flatten()
 edge_index = torch.stack([e_from, e_to], dim=0)
 print(edge_index)
 print('shape:', edge_index.shape)
-torch.save((g,e), f'swissrivernetwork/benchmark/dump/graph_{graph_name}-attention.pth') 
+torch.save((g,edge_index), f'swissrivernetwork/benchmark/dump/graph_{graph_name}-attention.pth') 
 
 t = weights.shape[0]
 

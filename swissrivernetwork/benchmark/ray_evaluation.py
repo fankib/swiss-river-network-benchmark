@@ -56,6 +56,14 @@ def experiment_analysis_single_model(graph_name, method):
     if 'stgnn' == method and 'zurich' == graph_name:
         date = 'stgnn-2025-07-24_09-41-05'
     
+    # Super Seed with latest runs:
+    if 'stgnn' == method and 'swiss-2010' == graph_name:
+        print("Super seed with latest run!")
+        date = 'stgnn-2026-03-16_23-52-46'
+    if 'stgnn' == method and 'swiss-2010-attention' == graph_name:
+        date = 'stgnn-2026-03-16_17-12-23'
+
+    
     directory = '/home/benjamin/ray_results'
     matching_items = [item for item in os.listdir(directory) if date in item and method in item]
     assert len(matching_items) == 1, 'Identifier is not unique'
@@ -81,7 +89,7 @@ def evaluate_best_trial_single_model(graph_name, method):
     if 'stgnn' == method:
         input_size = 1
         num_embeddings = len(read_stations(graph_name))
-        model = SpatioTemporalEmbeddingModel(best_config['gnn_conv'], 1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_layers'], best_config['num_convs'])
+        model = SpatioTemporalEmbeddingModel(best_config['gnn_conv'], 1, num_embeddings, best_config['embedding_size'], best_config['hidden_size'], best_config['num_layers'], best_config['num_convs'], best_config['num_heads'])
     
     # Load Model
     model_file = sorted(os.listdir(best_checkpoint.path))[0]
@@ -211,6 +219,8 @@ def process_method(graph_name, method):
             col_nse.append(nses[i])
             col_n.append(ns[i])
     
+    print('AVERAGE RMSE:', np.mean(col_rmse))
+
     print('METHOD LEARNABLE PARAMETERS:', total_params)
 
     print('FAILED_STATIONS:', failed_stations)
@@ -242,18 +252,18 @@ def process_method(graph_name, method):
 
 if __name__ == '__main__':
 
-    GRAPH_NAMES = ['swiss-1990', 'swiss-2010', 'zurich']
+    GRAPH_NAMES = ['swiss-1990', 'swiss-2010', 'zurich', 'swiss-2010-attention']
     METHODS = ['lstm', 'graphlet', 'lstm_embedding', 'stgnn']
 
     # Single Run
-    SINGLE_RUN = False
+    SINGLE_RUN = True
     if SINGLE_RUN:
-        graph_name = GRAPH_NAMES[2]
+        graph_name = GRAPH_NAMES[3]
         method = METHODS[3]        
         process_method(graph_name, method)
     
     # Graph Run
-    GRAPH_RUN = True
+    GRAPH_RUN = False
     if GRAPH_RUN:
         graph_name = GRAPH_NAMES[1]
         for m in METHODS:
